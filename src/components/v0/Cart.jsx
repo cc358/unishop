@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ConfirmDialog, Drawer } from './UIComponents';
 
 // 模拟购物车数据
 const mockCartData = [
@@ -53,6 +54,14 @@ const mockCartData = [
 ];
 
 function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
+  const [isChanging, setIsChanging] = useState(false);
+
+  const handleQuantityChange = (newQuantity) => {
+    setIsChanging(true);
+    onQuantityChange(item.id, newQuantity);
+    setTimeout(() => setIsChanging(false), 200);
+  };
+
   return (
     <div className="flex items-start gap-3 lg:gap-4 py-4 border-b border-gray-100 last:border-b-0">
       {/* 选择框 */}
@@ -60,8 +69,8 @@ function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
         onClick={() => onSelect(item.id)}
         className="flex-shrink-0 mt-4 lg:mt-6"
       >
-        <div className={`w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-          item.selected ? 'bg-primary border-primary' : 'border-gray-300'
+        <div className={`w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+          item.selected ? 'bg-primary border-primary scale-110' : 'border-gray-300'
         }`}>
           {item.selected && (
             <svg className="w-3 h-3 lg:w-4 lg:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,19 +111,21 @@ function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
             {/* 数量选择器 */}
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
               <button
-                onClick={() => onQuantityChange(item.id, item.quantity - 1)}
+                onClick={() => handleQuantityChange(item.quantity - 1)}
                 disabled={item.quantity <= 1}
-                className="w-7 h-7 flex items-center justify-center text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+                className="w-7 h-7 flex items-center justify-center text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed active:bg-gray-100 transition-colors"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
-              <span className="w-8 text-center text-sm">{item.quantity}</span>
+              <span className={`w-8 text-center text-sm transition-transform ${isChanging ? 'scale-110' : ''}`}>
+                {item.quantity}
+              </span>
               <button
-                onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+                onClick={() => handleQuantityChange(item.quantity + 1)}
                 disabled={item.quantity >= item.stock}
-                className="w-7 h-7 flex items-center justify-center text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed"
+                className="w-7 h-7 flex items-center justify-center text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed active:bg-gray-100 transition-colors"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -136,19 +147,21 @@ function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
           {/* PC端数量选择器 */}
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
             <button
-              onClick={() => onQuantityChange(item.id, item.quantity - 1)}
+              onClick={() => handleQuantityChange(item.quantity - 1)}
               disabled={item.quantity <= 1}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed active:bg-gray-100 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
-            <span className="w-12 text-center font-medium">{item.quantity}</span>
+            <span className={`w-12 text-center font-medium transition-transform ${isChanging ? 'scale-110' : ''}`}>
+              {item.quantity}
+            </span>
             <button
-              onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+              onClick={() => handleQuantityChange(item.quantity + 1)}
               disabled={item.quantity >= item.stock}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed active:bg-gray-100 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -158,12 +171,14 @@ function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
 
           {/* PC端小计 */}
           <div className="w-28 text-center">
-            <span className="font-semibold text-gray-800">¥{(item.price * item.quantity).toFixed(2)}</span>
+            <span className={`font-semibold text-gray-800 transition-all ${isChanging ? 'text-primary scale-105' : ''}`}>
+              ¥{(item.price * item.quantity).toFixed(2)}
+            </span>
           </div>
 
           {/* PC端删除按钮 */}
           <button
-            onClick={() => onDelete(item.id)}
+            onClick={() => onDelete(item)}
             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -175,7 +190,7 @@ function CartItem({ item, onSelect, onQuantityChange, onDelete }) {
 
       {/* 移动端删除按钮 */}
       <button
-        onClick={() => onDelete(item.id)}
+        onClick={() => onDelete(item)}
         className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors lg:hidden"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,8 +213,8 @@ function ShopGroup({ shop, onSelectShop, onSelectItem, onQuantityChange, onDelet
           onClick={() => onSelectShop(shop.shopId, !allSelected)}
           className="flex-shrink-0"
         >
-          <div className={`w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-            allSelected ? 'bg-primary border-primary' : someSelected ? 'bg-primary/50 border-primary/50' : 'border-gray-300'
+          <div className={`w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+            allSelected ? 'bg-primary border-primary scale-110' : someSelected ? 'bg-primary/50 border-primary/50' : 'border-gray-300'
           }`}>
             {(allSelected || someSelected) && (
               <svg className="w-3 h-3 lg:w-4 lg:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,8 +279,14 @@ function EmptyCart() {
 }
 
 export default function Cart() {
+  const navigate = useNavigate();
   const [cartData, setCartData] = useState(mockCartData);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [priceAnimating, setPriceAnimating] = useState(false);
+  const cartIconRef = useRef(null);
 
   // 计算选中的商品数量和总价
   const selectedItems = cartData.flatMap(shop => shop.items.filter(item => item.selected));
@@ -315,22 +336,53 @@ export default function Cart() {
         item.id === itemId ? { ...item, quantity: Math.min(quantity, item.stock) } : item
       )
     })));
+    
+    // 价格动画
+    setPriceAnimating(true);
+    setTimeout(() => setPriceAnimating(false), 300);
   };
 
-  // 删除商品
-  const handleDeleteItem = (itemId) => {
-    setCartData(prev => prev.map(shop => ({
-      ...shop,
-      items: shop.items.filter(item => item.id !== itemId)
-    })).filter(shop => shop.items.length > 0));
+  // 点击删除按钮
+  const handleDeleteClick = (item) => {
+    setItemToDelete(item);
+    setShowDeleteConfirm(true);
+  };
+
+  // 确认删除单个商品
+  const confirmDeleteItem = () => {
+    if (itemToDelete) {
+      setCartData(prev => prev.map(shop => ({
+        ...shop,
+        items: shop.items.filter(item => item.id !== itemToDelete.id)
+      })).filter(shop => shop.items.length > 0));
+    }
+    setShowDeleteConfirm(false);
+    setItemToDelete(null);
   };
 
   // 删除选中商品
   const handleDeleteSelected = () => {
+    if (selectedItems.length === 0) return;
+    setShowBatchDeleteConfirm(true);
+  };
+
+  // 确认批量删除
+  const confirmBatchDelete = () => {
     setCartData(prev => prev.map(shop => ({
       ...shop,
       items: shop.items.filter(item => !item.selected)
     })).filter(shop => shop.items.length > 0));
+    setShowBatchDeleteConfirm(false);
+  };
+
+  // 去结算
+  const handleCheckout = () => {
+    if (totalCount === 0) return;
+    navigate('/checkout', { 
+      state: { 
+        items: selectedItems 
+      }
+    });
   };
 
   const isEmpty = cartData.length === 0;
@@ -352,7 +404,9 @@ export default function Cart() {
               <span className="text-gray-300 mx-2">|</span>
               <span className="text-xl text-gray-600">购物车</span>
             </Link>
-            <h1 className="text-lg font-semibold lg:hidden">购物车{allItems.length > 0 && `(${allItems.length})`}</h1>
+            <h1 className="text-lg font-semibold lg:hidden">
+              购物车{allItems.length > 0 && `(${allItems.length})`}
+            </h1>
             <button
               onClick={() => setIsEditing(!isEditing)}
               className="text-sm text-primary hover:text-primary/80 transition-colors"
@@ -378,7 +432,7 @@ export default function Cart() {
                     onSelectShop={handleSelectShop}
                     onSelectItem={handleSelectItem}
                     onQuantityChange={handleQuantityChange}
-                    onDeleteItem={handleDeleteItem}
+                    onDeleteItem={handleDeleteClick}
                   />
                 ))}
               </div>
@@ -432,19 +486,22 @@ export default function Cart() {
 
                 <div className="flex justify-between items-baseline pt-4 border-t border-gray-100 mb-6">
                   <span className="text-gray-600">应付总额:</span>
-                  <span className="text-2xl font-bold text-primary">¥{totalPrice.toFixed(2)}</span>
+                  <span className={`text-2xl font-bold text-primary transition-transform ${priceAnimating ? 'scale-110' : ''}`}>
+                    ¥{totalPrice.toFixed(2)}
+                  </span>
                 </div>
 
-                <Link
-                  to={totalCount > 0 ? '/checkout' : '#'}
-                  className={`block w-full py-3 rounded-xl text-center font-semibold transition-colors ${
+                <button
+                  onClick={handleCheckout}
+                  disabled={totalCount === 0}
+                  className={`block w-full py-3 rounded-xl text-center font-semibold transition-all ${
                     totalCount > 0
-                      ? 'bg-primary text-white hover:bg-primary/90'
+                      ? 'bg-primary text-white hover:bg-primary/90 active:scale-95'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   结算({totalCount})
-                </Link>
+                </button>
 
                 {isEditing && (
                   <button
@@ -470,8 +527,8 @@ export default function Cart() {
               onClick={handleSelectAll}
               className="flex items-center gap-2"
             >
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                allSelected ? 'bg-primary border-primary' : 'border-gray-300'
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                allSelected ? 'bg-primary border-primary scale-110' : 'border-gray-300'
               }`}>
                 {allSelected && (
                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -482,45 +539,75 @@ export default function Cart() {
               <span className="text-sm text-gray-600">全选</span>
             </button>
 
-            {/* 价格信息 */}
-            <div className="flex-1 text-right mr-3">
+            <div className="flex-1 flex items-center justify-end gap-3">
+              {/* 价格信息 */}
+              {!isEditing && (
+                <div className="text-right">
+                  <div className="flex items-baseline justify-end gap-1">
+                    <span className="text-sm text-gray-600">合计:</span>
+                    <span className={`text-xl font-bold text-primary transition-transform ${priceAnimating ? 'scale-110' : ''}`}>
+                      ¥{totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  {savedPrice > 0 && (
+                    <p className="text-xs text-gray-500">
+                      已优惠 <span className="text-red-500">¥{savedPrice.toFixed(2)}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 结算/删除按钮 */}
               {isEditing ? (
                 <button
                   onClick={handleDeleteSelected}
                   disabled={selectedItems.length === 0}
-                  className="text-sm text-red-500 disabled:text-gray-400"
+                  className="px-6 py-2 rounded-full font-semibold text-sm border border-red-400 text-red-500 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
                 >
-                  删除选中({selectedItems.length})
+                  删除({selectedItems.length})
                 </button>
               ) : (
-                <>
-                  <div className="flex items-baseline justify-end gap-1">
-                    <span className="text-sm text-gray-600">合计:</span>
-                    <span className="text-lg font-semibold text-primary">¥{totalPrice.toFixed(2)}</span>
-                  </div>
-                  {savedPrice > 0 && (
-                    <p className="text-xs text-gray-500">已优惠 ¥{savedPrice.toFixed(2)}</p>
-                  )}
-                </>
+                <button
+                  onClick={handleCheckout}
+                  disabled={totalCount === 0}
+                  className={`px-6 py-2 rounded-full font-semibold text-sm transition-all ${
+                    totalCount > 0
+                      ? 'bg-primary text-white active:scale-95'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  结算({totalCount})
+                </button>
               )}
             </div>
-
-            {/* 结算按钮 */}
-            {!isEditing && (
-              <Link
-                to={totalCount > 0 ? '/checkout' : '#'}
-                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-colors ${
-                  totalCount > 0
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                结算({totalCount})
-              </Link>
-            )}
           </div>
         </div>
       )}
+
+      {/* 删除单个商品确认弹窗 */}
+      <ConfirmDialog
+        visible={showDeleteConfirm}
+        title="确认删除"
+        message={`确定要删除"${itemToDelete?.name?.slice(0, 20)}..."吗？`}
+        confirmText="删除"
+        confirmType="danger"
+        onConfirm={confirmDeleteItem}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+      />
+
+      {/* 批量删除确认弹窗 */}
+      <ConfirmDialog
+        visible={showBatchDeleteConfirm}
+        title="确认删除"
+        message={`确定要删除选中的 ${selectedItems.length} 件商品吗？`}
+        confirmText="删除"
+        confirmType="danger"
+        onConfirm={confirmBatchDelete}
+        onCancel={() => setShowBatchDeleteConfirm(false)}
+      />
     </div>
   );
 }

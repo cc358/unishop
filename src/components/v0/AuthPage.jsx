@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { LoadingOverlay, SuccessAnimation } from './UIComponents';
 
 // 登录表单组件
-function LoginForm({ onSwitch, onForgotPassword }) {
+function LoginForm({ onSwitch, onForgotPassword, onLoginSuccess }) {
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -11,6 +12,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [touched, setTouched] = useState({});
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -24,19 +26,53 @@ function LoginForm({ onSwitch, onForgotPassword }) {
     }
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    validateField(name);
+  };
+
+  const validateField = (fieldName) => {
+    const newErrors = { ...errors };
+    
+    if (fieldName === 'phone') {
+      if (!formData.phone) {
+        newErrors.phone = '请输入手机号';
+      } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
+        newErrors.phone = '请输入正确的11位手机号';
+      } else {
+        delete newErrors.phone;
+      }
+    }
+    
+    if (fieldName === 'password') {
+      if (!formData.password) {
+        newErrors.password = '请输入密码';
+      } else if (formData.password.length < 6) {
+        newErrors.password = '密码至少需要6位字符';
+      } else {
+        delete newErrors.password;
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!formData.phone) {
       newErrors.phone = '请输入手机号';
     } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
-      newErrors.phone = '请输入正确的手机号';
+      newErrors.phone = '请输入正确的11位手机号';
     }
     if (!formData.password) {
       newErrors.password = '请输入密码';
     } else if (formData.password.length < 6) {
-      newErrors.password = '密码至少6位';
+      newErrors.password = '密码至少需要6位字符';
     }
     setErrors(newErrors);
+    setTouched({ phone: true, password: true });
     return Object.keys(newErrors).length === 0;
   };
 
@@ -46,21 +82,22 @@ function LoginForm({ onSwitch, onForgotPassword }) {
     
     setIsLoading(true);
     // 模拟登录请求
-    setTimeout(() => {
-      setIsLoading(false);
-      // 这里由 Claude Code 对接实际登录 API
-      console.log('登录数据:', formData);
-    }, 1500);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsLoading(false);
+    // 登录成功
+    onLoginSuccess && onLoginSuccess();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-5">
       {/* 手机号输入 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.phone && touched.phone 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.phone && touched.phone ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
           <input
@@ -68,6 +105,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请输入手机号"
             maxLength={11}
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
@@ -76,7 +114,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, phone: '' }))}
-              className="p-1 text-gray-400 hover:text-gray-600"
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -84,15 +122,24 @@ function LoginForm({ onSwitch, onForgotPassword }) {
             </button>
           )}
         </div>
-        {errors.phone && <p className="text-xs text-red-500 mt-1 ml-1">{errors.phone}</p>}
+        {errors.phone && touched.phone && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.phone}
+          </p>
+        )}
       </div>
 
       {/* 密码输入 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.password && touched.password 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.password && touched.password ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <input
@@ -100,13 +147,14 @@ function LoginForm({ onSwitch, onForgotPassword }) {
             name="password"
             value={formData.password}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请输入密码"
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           >
             {showPassword ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,25 +168,41 @@ function LoginForm({ onSwitch, onForgotPassword }) {
             )}
           </button>
         </div>
-        {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password}</p>}
+        {errors.password && touched.password && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.password}
+          </p>
+        )}
       </div>
 
       {/* 记住我 & 忘记密码 */}
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2 cursor-pointer group">
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+            formData.rememberMe ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-primary/50'
+          }`}>
+            {formData.rememberMe && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
           <input
             type="checkbox"
             name="rememberMe"
             checked={formData.rememberMe}
             onChange={handleChange}
-            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+            className="hidden"
           />
           <span className="text-sm text-gray-600">记住我</span>
         </label>
         <button
           type="button"
           onClick={onForgotPassword}
-          className="text-sm text-primary hover:text-primary/80"
+          className="text-sm text-primary hover:text-primary/80 transition-colors"
         >
           忘记密码?
         </button>
@@ -148,7 +212,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-3 lg:py-3.5 bg-primary text-white rounded-xl font-medium transition-colors hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 lg:py-3.5 bg-primary text-white rounded-xl font-medium transition-all hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
       >
         {isLoading && (
           <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -165,7 +229,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
         <button
           type="button"
           onClick={onSwitch}
-          className="text-primary ml-1 font-medium hover:text-primary/80"
+          className="text-primary ml-1 font-medium hover:text-primary/80 transition-colors"
         >
           立即注册
         </button>
@@ -175,7 +239,7 @@ function LoginForm({ onSwitch, onForgotPassword }) {
 }
 
 // 注册表单组件
-function RegisterForm({ onSwitch }) {
+function RegisterForm({ onSwitch, onRegisterSuccess }) {
   const [formData, setFormData] = useState({
     phone: '',
     code: '',
@@ -187,6 +251,8 @@ function RegisterForm({ onSwitch }) {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [touched, setTouched] = useState({});
+  const [codeSending, setCodeSending] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -199,12 +265,24 @@ function RegisterForm({ onSwitch }) {
     }
   };
 
-  const sendCode = () => {
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
+
+  const sendCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
-      setErrors(prev => ({ ...prev, phone: '请输入正确的手机号' }));
+      setErrors(prev => ({ ...prev, phone: '请输入正确的11位手机号' }));
+      setTouched(prev => ({ ...prev, phone: true }));
       return;
     }
-    // 模拟发送验证码
+    
+    // 发送验证码动画
+    setCodeSending(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setCodeSending(false);
+    
+    // 开始倒计时
     setCountdown(60);
     const timer = setInterval(() => {
       setCountdown(prev => {
@@ -222,7 +300,7 @@ function RegisterForm({ onSwitch }) {
     if (!formData.phone) {
       newErrors.phone = '请输入手机号';
     } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
-      newErrors.phone = '请输入正确的手机号';
+      newErrors.phone = '请输入正确的11位手机号';
     }
     if (!formData.code) {
       newErrors.code = '请输入验证码';
@@ -232,17 +310,18 @@ function RegisterForm({ onSwitch }) {
     if (!formData.password) {
       newErrors.password = '请设置密码';
     } else if (formData.password.length < 6) {
-      newErrors.password = '密码至少6位';
+      newErrors.password = '密码至少需要6位字符';
     }
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = '请确认密码';
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = '两次密码不一致';
+      newErrors.confirmPassword = '两次输入的密码不一致';
     }
     if (!formData.agreement) {
       newErrors.agreement = '请阅读并同意用户协议';
     }
     setErrors(newErrors);
+    setTouched({ phone: true, code: true, password: true, confirmPassword: true, agreement: true });
     return Object.keys(newErrors).length === 0;
   };
 
@@ -251,20 +330,21 @@ function RegisterForm({ onSwitch }) {
     if (!validate()) return;
     
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('注册数据:', formData);
-    }, 1500);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsLoading(false);
+    onRegisterSuccess && onRegisterSuccess();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-5">
       {/* 手机号 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.phone && touched.phone 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.phone && touched.phone ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
           <input
@@ -272,20 +352,30 @@ function RegisterForm({ onSwitch }) {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请输入手机号"
             maxLength={11}
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
           />
         </div>
-        {errors.phone && <p className="text-xs text-red-500 mt-1 ml-1">{errors.phone}</p>}
+        {errors.phone && touched.phone && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.phone}
+          </p>
+        )}
       </div>
 
       {/* 验证码 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.code ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.code && touched.code 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.code && touched.code ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
           <input
@@ -293,6 +383,7 @@ function RegisterForm({ onSwitch }) {
             name="code"
             value={formData.code}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请输入验证码"
             maxLength={6}
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
@@ -300,21 +391,46 @@ function RegisterForm({ onSwitch }) {
           <button
             type="button"
             onClick={sendCode}
-            disabled={countdown > 0}
-            className="text-sm text-primary disabled:text-gray-400 whitespace-nowrap hover:text-primary/80"
+            disabled={countdown > 0 || codeSending}
+            className={`text-sm whitespace-nowrap transition-all ${
+              countdown > 0 || codeSending
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-primary hover:text-primary/80 active:scale-95'
+            }`}
           >
-            {countdown > 0 ? `${countdown}s 后重发` : '获取验证码'}
+            {codeSending ? (
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                发送中
+              </span>
+            ) : countdown > 0 ? (
+              <span className="tabular-nums">{countdown}s 后重发</span>
+            ) : (
+              '获取验证码'
+            )}
           </button>
         </div>
-        {errors.code && <p className="text-xs text-red-500 mt-1 ml-1">{errors.code}</p>}
+        {errors.code && touched.code && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.code}
+          </p>
+        )}
       </div>
 
       {/* 密码 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.password && touched.password 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.password && touched.password ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <input
@@ -322,13 +438,14 @@ function RegisterForm({ onSwitch }) {
             name="password"
             value={formData.password}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请设置密码（至少6位）"
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           >
             {showPassword ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -342,15 +459,24 @@ function RegisterForm({ onSwitch }) {
             )}
           </button>
         </div>
-        {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password}</p>}
+        {errors.password && touched.password && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.password}
+          </p>
+        )}
       </div>
 
       {/* 确认密码 */}
       <div>
-        <div className={`flex items-center border rounded-xl px-4 py-3 lg:py-3.5 transition-colors ${
-          errors.confirmPassword ? 'border-red-400 bg-red-50' : 'border-gray-200 focus-within:border-primary'
+        <div className={`flex items-center border-2 rounded-xl px-4 py-3 lg:py-3.5 transition-all duration-200 ${
+          errors.confirmPassword && touched.confirmPassword 
+            ? 'border-red-400 bg-red-50/50' 
+            : 'border-gray-200 focus-within:border-primary focus-within:shadow-sm focus-within:shadow-primary/10'
         }`}>
-          <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${errors.confirmPassword && touched.confirmPassword ? 'text-red-400' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <input
@@ -358,22 +484,39 @@ function RegisterForm({ onSwitch }) {
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="请确认密码"
             className="flex-1 outline-none text-sm lg:text-base bg-transparent placeholder-gray-400"
           />
         </div>
-        {errors.confirmPassword && <p className="text-xs text-red-500 mt-1 ml-1">{errors.confirmPassword}</p>}
+        {errors.confirmPassword && touched.confirmPassword && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-1 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.confirmPassword}
+          </p>
+        )}
       </div>
 
       {/* 用户协议 */}
       <div>
-        <label className="flex items-start gap-2 cursor-pointer">
+        <label className="flex items-start gap-2 cursor-pointer group">
+          <div className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
+            formData.agreement ? 'bg-primary border-primary' : errors.agreement && touched.agreement ? 'border-red-400' : 'border-gray-300 group-hover:border-primary/50'
+          }`}>
+            {formData.agreement && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
           <input
             type="checkbox"
             name="agreement"
             checked={formData.agreement}
             onChange={handleChange}
-            className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
+            className="hidden"
           />
           <span className="text-xs lg:text-sm text-gray-600">
             我已阅读并同意
@@ -382,14 +525,21 @@ function RegisterForm({ onSwitch }) {
             <Link to="/privacy" className="text-primary hover:text-primary/80">《隐私政策》</Link>
           </span>
         </label>
-        {errors.agreement && <p className="text-xs text-red-500 mt-1 ml-1">{errors.agreement}</p>}
+        {errors.agreement && touched.agreement && (
+          <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5 ml-6 animate-fade-in">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {errors.agreement}
+          </p>
+        )}
       </div>
 
       {/* 注册按钮 */}
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-3 lg:py-3.5 bg-primary text-white rounded-xl font-medium transition-colors hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 lg:py-3.5 bg-primary text-white rounded-xl font-medium transition-all hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
       >
         {isLoading && (
           <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -406,7 +556,7 @@ function RegisterForm({ onSwitch }) {
         <button
           type="button"
           onClick={onSwitch}
-          className="text-primary ml-1 font-medium hover:text-primary/80"
+          className="text-primary ml-1 font-medium hover:text-primary/80 transition-colors"
         >
           立即登录
         </button>
@@ -418,22 +568,9 @@ function RegisterForm({ onSwitch }) {
 // 第三方登录
 function SocialLogin() {
   const socialPlatforms = [
-    { name: '微信', icon: (
-      <svg className="w-6 h-6 lg:w-7 lg:h-7" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18z"/>
-        <path d="M23.98 14.438c0-3.405-3.265-6.169-7.29-6.169-4.026 0-7.29 2.764-7.29 6.17 0 3.405 3.264 6.168 7.29 6.168.76 0 1.49-.096 2.183-.26a.724.724 0 0 1 .607.077l1.601.935a.273.273 0 0 0 .141.046c.136 0 .245-.11.245-.246 0-.06-.024-.12-.04-.178l-.327-1.233a.497.497 0 0 1 .18-.56c1.542-1.132 2.7-2.805 2.7-4.75zm-9.436-1.19c-.538 0-.974-.444-.974-.99a.98.98 0 0 1 .974-.99c.538 0 .974.444.974.99s-.436.99-.974.99zm4.292 0a.98.98 0 0 1-.974-.99c0-.546.436-.99.974-.99s.974.444.974.99-.436.99-.974.99z"/>
-      </svg>
-    ), color: '#07C160' },
-    { name: 'QQ', icon: (
-      <svg className="w-6 h-6 lg:w-7 lg:h-7" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.239 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.904-3.967 1.904-3.967.846 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
-      </svg>
-    ), color: '#12B7F5' },
-    { name: '微博', icon: (
-      <svg className="w-6 h-6 lg:w-7 lg:h-7" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.601.622.263.82.972.442 1.592zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.313-.361-.177-.586.138-.227.436-.346.672-.24.239.09.315.36.194.573zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.64 4.318-.341 5.132-2.179.8-1.793-.201-3.642-2.161-4.149zm7.563-1.224c-.346-.105-.579-.18-.405-.649.388-1.032.426-1.922.002-2.555-.792-1.183-2.961-1.122-5.453-.033 0 0-.782.343-.583-.28.386-1.236.324-2.274-.273-2.87-1.35-1.349-4.943.053-8.022 3.133C1.447 10.271 0 12.319 0 14.076c0 3.36 4.31 5.407 8.524 5.407 5.525 0 9.199-3.207 9.199-5.756 0-1.544-1.301-2.421-2.664-2.778zm1.582-5.727c-.074-.253.093-.527.372-.612.276-.087.565.049.646.301.499 1.639-.007 3.434-1.392 4.593-.22.184-.556.152-.747-.07-.19-.219-.163-.547.054-.734 1.089-.912 1.479-2.301 1.067-3.478zm2.293-1.686c-.173-.591.217-1.234.87-1.432.65-.199 1.322.116 1.499.706 1.164 3.826-.035 8.001-3.247 10.705-.519.432-1.306.354-1.746-.177-.439-.53-.363-1.297.151-1.733 2.524-2.131 3.476-5.41 2.473-8.069z"/>
-      </svg>
-    ), color: '#E6162D' }
+    { name: '微信', color: '#07C160' },
+    { name: 'QQ', color: '#12B7F5' },
+    { name: '微博', color: '#E6162D' }
   ];
 
   return (
@@ -451,10 +588,10 @@ function SocialLogin() {
             onClick={() => console.log(`${platform.name} 登录`)}
           >
             <div 
-              className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+              className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center transition-all group-hover:scale-110 group-active:scale-95"
               style={{ backgroundColor: `${platform.color}15`, color: platform.color }}
             >
-              {platform.icon}
+              <span className="text-lg font-bold">{platform.name[0]}</span>
             </div>
             <span className="text-xs text-gray-500">{platform.name}</span>
           </button>
@@ -466,14 +603,40 @@ function SocialLogin() {
 
 // 主组件
 export default function AuthPage() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', subtitle: '' });
 
   const handleForgotPassword = () => {
     console.log('跳转忘记密码页面');
   };
 
+  const handleLoginSuccess = () => {
+    setSuccessMessage({ title: '登录成功', subtitle: '欢迎回来!' });
+    setShowSuccess(true);
+  };
+
+  const handleRegisterSuccess = () => {
+    setSuccessMessage({ title: '注册成功', subtitle: '欢迎加入 UniShop!' });
+    setShowSuccess(true);
+  };
+
+  const handleSuccessComplete = () => {
+    setShowSuccess(false);
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 lg:bg-gray-100 lg:flex lg:items-center lg:justify-center">
+      {/* 成功动画 */}
+      <SuccessAnimation
+        visible={showSuccess}
+        title={successMessage.title}
+        subtitle={successMessage.subtitle}
+        onComplete={handleSuccessComplete}
+      />
+
       {/* 移动端顶部导航 */}
       <div className="sticky top-0 z-10 bg-white lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
@@ -544,9 +707,13 @@ export default function AuthPage() {
                 <LoginForm 
                   onSwitch={() => setIsLogin(false)} 
                   onForgotPassword={handleForgotPassword}
+                  onLoginSuccess={handleLoginSuccess}
                 />
               ) : (
-                <RegisterForm onSwitch={() => setIsLogin(true)} />
+                <RegisterForm 
+                  onSwitch={() => setIsLogin(true)}
+                  onRegisterSuccess={handleRegisterSuccess}
+                />
               )}
 
               <SocialLogin />
