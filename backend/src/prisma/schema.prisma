@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("user") // user | admin
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  orders    Order[]
+  addresses Address[]
+  cartItems CartItem[]
+}
+
+// 商品分类
+model Category {
+  id       String     @id @default(cuid())
+  name     String
+  image    String?
+  parentId String?
+  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children Category[] @relation("SubCategories")
+  products Product[]
+
+  @@unique([name, parentId])
+}
+
+// 商品
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  currency    String      @default("USD")
+  image       String?
+  images      Json?
+  stock       Int         @default(0)
+  sales       Int         @default(0)
+  condition   String?
+  ebayItemId  String?     @unique
+  ebayUrl     String?
+  source          String      @default("local") // local | ebay
+  sellerName      String?
+  sellerFeedback  String?
+  reviews         Json?
+  categoryId      String?
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+}
+
+// 订单
+model Order {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  totalAmount Float
+  status      String      @default("pending") // pending | paid | shipped | completed | cancelled
+  payMethod   String?     // stripe | usdt
+  addressId   String?
+  address     Address?    @relation(fields: [addressId], references: [id])
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// 订单明细
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id])
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  name       String
+  price      Float
+  quantity   Int
+  image      String?
+  ebayItemId String?
+  source     String  @default("local") // local | ebay
+  currency   String  @default("USD")
+}
+
+// 购物车
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  selected  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+}
+
+// 收货地址
+model Address {
+  id     String  @id @default(cuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id])
+  name   String
+  phone  String
+  detail String
+  orders Order[]
+}
