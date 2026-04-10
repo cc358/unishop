@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom"
-import { Home, Search, Grid2X2, ShoppingCart, User } from "lucide-react"
+import { Home, Grid2X2, Headphones, ShoppingCart, User } from "lucide-react"
 
 const navItems = [
   { name: "首页", icon: Home, href: "/" },
   { name: "分类", icon: Grid2X2, href: "/category" },
-  { name: "搜索", icon: Search, href: "#" },
+  { name: "在线客服", icon: Headphones, href: "#" },
   { name: "购物车", icon: ShoppingCart, badge: 2, href: "/cart" },
   { name: "我的", icon: User, href: "/profile" },
 ]

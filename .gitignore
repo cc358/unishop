@@ -5,3 +5,5 @@ screenshots/
 *.mjs
 dist/
 dev.db
+deploy.sh
+export_data.json
